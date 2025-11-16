@@ -48,6 +48,11 @@ consensus for all of them.
 2. Introduce an abstraction boundary between "the type algebra" and
   "the type checker". 
 
+  This could be implemented between Ctype and Typecore as a start, so 
+  that the type checker is forced to go through a proper API to access/mutate
+  type nodes.  This would make it impossible to "forget" a call
+  to `repr` and will allow further changes on the internal representation.
+  
 3. Collect all global state of the type checker in a single place,
   possibly a single reference to a persistent data structure
   (e.g. maps instead of hashtables).
@@ -57,9 +62,16 @@ consensus for all of them.
 5. - Document row_desc
    - get rid of row_bound.
 
-6. Implement union-find with a more abstract/persistent datastructure
+6. Implement union-find with a more abstract/persistent datastructure.
+  We need to be careful about memory leaks with the naive approach of
+  representing links with a persistent heap.
+  Modest version of the proposal: have an explicit indirection layer
+  (type_expr Unode.t) for nodes in the union-find structure. 
+  Efficiency cost?
 
 7. Make the logic for record/constructor disambiguation more readable.
+  Request for Jacques to write a specification which could be used to
+  to make the implementation easier for others to understand.
 
 8. Tidy up destructive substitution.
 
@@ -70,6 +82,12 @@ consensus for all of them.
   magic "internal" names which should be avoided.
 
 11. Use a map to remove `Tsubst`.
+  With the unique ids on each type node, copying can be implemented 
+  rather efficiently using a map.
+  `Tsubst` is currently used in the following files: 
+  btype.ml, ctype.ml, gprinttyp.ml, out_type.ml, rawprinttyp.ml, subst.ml, 
+  typedecl_separability.ml, typedecl_variance.ml, typeopt.ml, types.ml, 
+  types.mli, types.mli
 
 12. Parse attributes understood (e.g. the deprecated attribute) by the
   compiler into a structured representation during type-checking.
@@ -77,14 +95,23 @@ consensus for all of them.
 13. Introduce a notion of syntactic "path-like location" to point to
   allow pointing to AST fragments, and use that to implement "unused"
   warnings in a less invasive and less imperative way.
-  (See Thomas' PR)
+  (See Thomas' PR, maybe this commit? 3762abea10a3c3c7614b418b42d0ed308b8e3693)
 
 14. Deprecate -nolabels (or even get rid of it?)
+  First step is to turn on the warning by default. We could even stop 
+  supporting unlabeled full applications?
+  Link to any discussion threads that have been had about this: ?
 
 15. - Monitor coverage of the typechecker implementation while running the
   testsuite
     - expand the testsuite and/or kill dead code in the typechecker
   to increase coverage ratio.
+  See PR#8874. Accomplish this by using bisect_ppx?
+  Ask Florian Angeletti and Sebastien Hinderer about the current state
+  as it was partially during Oxana's Outreachy internship:
+  Maybe commits: 
+  7087e24fe45cdcb071450a48ef70bc5500b1c082 
+  3e728c389922237bf2e2a20e23514ac78f8bd43e
 
 # Completed
 
@@ -92,44 +119,8 @@ consensus for all of them.
   "#"-encoding, etc)
     - Completed with commit: 3d4393a2023f0dc67213cbb37d914d2103a1ad83
 
-# Further Information and Discussion
-
-2. This could be implemented between Ctype and Typecore as a start, so 
-  that the type checker is forced to go through a proper API to access/mutate
-  type nodes.  This would make it impossible to "forget" a call
-  to `repr` and will allow further changes on the internal representation.
-
-4. With the unique ids on each type node, copying can be implemented 
-  rather efficiently using a map.
-  `Tsubst` is currently used in the following files: 
-  btype.ml, ctype.ml, gprinttyp.ml, out_type.ml, rawprinttyp.ml, subst.ml, 
-  typedecl_separability.ml, typedecl_variance.ml, typeopt.ml, types.ml, 
-  types.mli, types.mli
-
-6. We need to be careful about memory leaks with the naive approach of
-  representing links with a persistent heap.
-  Modest version of the proposal: have an explicit indirection layer
-  (type_expr Unode.t) for nodes in the union-find structure. 
-  Efficiency cost?
-
-7. Request for Jacques to write a specification which could be used to
-  to make the implementation easier for others to understand.
-
-13. Re. see Thomas's PR, maybe this commit? 3762abea10a3c3c7614b418b42d0ed308b8e3693
-
-14. First step is to turn on the warning by default. We could even stop 
-  supporting unlabeled full applications?
-  Link to any discussion threads that have been had about this: 
-
-15. See PR#8874. Accomplish this by using bisect_ppx. 
-  Ask Florian Angeletti and Sebastien Hinderer about the current state
-  as it was partially during Oxana's Outreachy internship:
-  Maybe commits: 
-  7087e24fe45cdcb071450a48ef70bc5500b1c082 
-  3e728c389922237bf2e2a20e23514ac78f8bd43e
-
 # Relevant Talks/Publications
 * ICFP 2025, A Tale of Two Lambdas: A Haskeller's Journey into OCaml, Richard A. Eisenberg
   - https://conf.researchr.org/details/icfp-splash-2025/haskellsymp-2025-papers/2/-A-Tale-of-Two-Lambdas-A-Haskeller-s-Journey-into-OCaml
   - 3:39:40, https://www.youtube.com/watch?v=IlQQElKaFvM&t=17691s 
-  
+
